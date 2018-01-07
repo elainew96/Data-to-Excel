@@ -2,6 +2,7 @@ import dash
 import dash_html_components as html
 import dash_core_components as dcc
 import time
+from dash.dependencies import Input, Output, Event, State
 
 app = dash.Dash()
 
@@ -33,11 +34,20 @@ app.layout = html.Div(children=[
     html.Button('Create New Sheet',id='create-new'),
     html.Button('Update Existing Sheet',id='update-existing'),
     html.Br(),
+    html.Br(),
     #output will be a pandas table with the information
     html.Div(id='output'),
     #graph displays spending habits
     html.Div(id='time-graph')
 ])
+
+@app.callback(Output('output','children'),
+              [Input('create-new','n_clicks')],
+              [State('sheet','value')])
+def create_new(n_clicks,sheet_value):
+    if (sheet_value != 'new' & n_clicks<1):
+        return html.Div('Are you sure you didnt mean to update or edit an existing sheet?')
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
