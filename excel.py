@@ -6,6 +6,9 @@ from dash.dependencies import Input, Output, Event, State
 
 app = dash.Dash()
 
+global clicks
+clicks = 0
+
 app.layout = html.Div(children=[
     html.H1('Spending Excel Sheet'),
     html.P('Create new sheet or update existing sheet?'),
@@ -42,11 +45,17 @@ app.layout = html.Div(children=[
 ])
 
 @app.callback(Output('output','children'),
-              [Input('create-new','n_clicks')],
+              [Input('create-new','n_clicks'),
+               Input('update-existing','n_clicks')],
               [State('sheet','value')])
-def create_new(n_clicks,sheet_value):
-    if (sheet_value != 'new' & n_clicks<1):
-        return html.Div('Are you sure you didnt mean to update or edit an existing sheet?')
+def create_new(new_clicks,update_clicks,sheet_value):
+    #use global variable to find out which click it was
+    global clicks
+    if (((sheet_value == 'update') | (sheet_value == 'edit')) & (new_clicks>clicks)):
+        clicks = new_clicks #update clicks
+        return html.Div('Are you sure you didn\'t mean to update or edit an existing sheet?')
+    elif ((sheet_value == 'new') & (update_clicks>1)):
+        return html.Div('Are you sure you didn\'t want to create a new sheet?')
 
 
 if __name__ == '__main__':
