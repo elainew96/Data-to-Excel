@@ -4,10 +4,16 @@ import dash_core_components as dcc
 import time
 from dash.dependencies import Input, Output, Event, State
 
+import xlsxwriter
+
 app = dash.Dash()
 
 global clicks
 clicks = 0
+
+def create_new(name,purchase,date,price):
+    workbook = xlsxwriter.Workbook(name+'.xlsx')
+    worksheet = workbook.addworksheet()
 
 app.layout = html.Div(children=[
     html.H1('Spending Excel Sheet'),
@@ -47,8 +53,12 @@ app.layout = html.Div(children=[
 @app.callback(Output('output','children'),
               [Input('create-new','n_clicks'),
                Input('update-existing','n_clicks')],
-              [State('sheet','value')])
-def create_new(new_clicks,update_clicks,sheet_value):
+              [State('sheet','value'),
+               State('name','value'),
+               State('purchase','value'),
+               State('date','value'),
+               State('price','value')])
+def display_choice(new_clicks,update_clicks,sheet_value,name,purchase,date,price):
     #use global variable to find out which click it was
     global clicks
     if (((sheet_value == 'update') | (sheet_value == 'edit')) & (new_clicks>clicks)):
@@ -56,7 +66,9 @@ def create_new(new_clicks,update_clicks,sheet_value):
         return html.Div('Are you sure you didn\'t mean to update or edit an existing sheet?')
     elif ((sheet_value == 'new') & (update_clicks>1)):
         return html.Div('Are you sure you didn\'t want to create a new sheet?')
-
+    elif ((sheet_value == 'new') & (new_clicks>clicks)):
+        #data is a pandas dataframe, and create new makes the excel and converts it into pandas
+        data = create_new(name,purchase,date,price)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
