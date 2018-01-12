@@ -5,15 +5,36 @@ import time
 from dash.dependencies import Input, Output, Event, State
 
 import xlsxwriter
+from xlrd import open_workbook
+from xlutils.copy import copy
 
 app = dash.Dash()
 
 global clicks
 clicks = 0
 
-def create_new(name,purchase,date,price):
+def create_new(name,data):
     workbook = xlsxwriter.Workbook(name+'.xlsx')
-    worksheet = workbook.addworksheet()
+    worksheet = workbook.add_worksheet('Spending')
+    #initialize new headers
+    row = 0
+    worksheet.write(row,0,'date:')
+    worksheet.write(row,1,'purchase item:')
+    worksheet.write(row,2,'price:')
+    worksheet.write(row,3,'timestamp:')
+    workbook.close()
+    return update_sheet(name,data)
+
+def update_sheet(name,data):
+    #opens existing sheet and makes a copy to edit
+    rb = open_workbook(name+'.xlsx')
+    wb = copy(rb)
+    sheet = wb.get_sheet('Spending')
+    #trial
+    return name
+    #find the next empty line
+    #try something, if fails then put in data
+
 
 app.layout = html.Div(children=[
     html.H1('Spending Excel Sheet'),
@@ -61,6 +82,8 @@ app.layout = html.Div(children=[
 def display_choice(new_clicks,update_clicks,sheet_value,name,purchase,date,price):
     #use global variable to find out which click it was
     global clicks
+    timestamp = time.time
+    info = [date,purchase,price,timestamp]
     if (((sheet_value == 'update') | (sheet_value == 'edit')) & (new_clicks>clicks)):
         clicks = new_clicks #update clicks
         return html.Div('Are you sure you didn\'t mean to update or edit an existing sheet?')
@@ -68,7 +91,8 @@ def display_choice(new_clicks,update_clicks,sheet_value,name,purchase,date,price
         return html.Div('Are you sure you didn\'t want to create a new sheet?')
     elif ((sheet_value == 'new') & (new_clicks>clicks)):
         #data is a pandas dataframe, and create new makes the excel and converts it into pandas
-        data = create_new(name,purchase,date,price)
+        data = create_new(name,info)
+        return html.Div(name)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
