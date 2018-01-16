@@ -1,17 +1,23 @@
 import dash
 import dash_html_components as html
 import dash_core_components as dcc
-import time
 from dash.dependencies import Input, Output, Event, State
 
 import xlsxwriter
+import xlrd
 from xlrd import open_workbook
 from xlutils.copy import copy
 
+import pandas as pd
+
+import time
+
 app = dash.Dash()
 
-global clicks
+global clicks # for creating a new sheet button
+global u_clicks #for update button
 clicks = 0
+u_clicks = 0
 
 def create_new(name,data):
     workbook = xlsxwriter.Workbook(name+'.xlsx')
@@ -28,13 +34,32 @@ def create_new(name,data):
 def update_sheet(name,data):
     #opens existing sheet and makes a copy to edit
     rb = open_workbook(name+'.xlsx')
+    # opens the sheet to read from
+    s = rb.sheet_by_name('Spending')
     wb = copy(rb)
     sheet = wb.get_sheet('Spending')
+    row = 0
+    found = 0
     #trial
+    while (found == 0):
+        #sees if the row has an entry, if it fails then exit the loop and we know which row is empty
+        try:
+            exists = s.cell_value(row,0)
+            row = row + 1
+        except:
+            found = 1
+    # puts the data into the excel sheet
+    for i in range(len(data)):
+        sheet.write(row,i,data[i])
+    # saves the new sheet
+    wb.save(name+'.xlsx')
     return name
-    #find the next empty line
-    #try something, if fails then put in data
+    '''
+    #gets data from excel as pandas DataFrame
+    dfs = pd.readexcel(name+'.xlsx',sheetname="Spending")
+    return dfs
 
+    '''
 
 app.layout = html.Div(children=[
     html.H1('Spending Excel Sheet'),
@@ -80,19 +105,34 @@ app.layout = html.Div(children=[
                State('date','value'),
                State('price','value')])
 def display_choice(new_clicks,update_clicks,sheet_value,name,purchase,date,price):
-    #use global variable to find out which click it was
+    #use global variables to find out which click it was
     global clicks
-    timestamp = time.time
+    global u_clicks
+    timestamp = time.ctime()
     info = [date,purchase,price,timestamp]
     if (((sheet_value == 'update') | (sheet_value == 'edit')) & (new_clicks>clicks)):
         clicks = new_clicks #update clicks
         return html.Div('Are you sure you didn\'t mean to update or edit an existing sheet?')
-    elif ((sheet_value == 'new') & (update_clicks>1)):
+    elif ((sheet_value == 'new') & (update_clicks>u_clicks)):
+        u_clicks = update_clicks
         return html.Div('Are you sure you didn\'t want to create a new sheet?')
     elif ((sheet_value == 'new') & (new_clicks>clicks)):
+        clicks = new_clicks
         #data is a pandas dataframe, and create new makes the excel and converts it into pandas
         data = create_new(name,info)
-        return html.Div(name)
+        data = pd.read_excel(name+'.xlsx',sheetname="Spending")
+        # need to fix spacing/padding issues with table
+        return html.Div([html.Table(
+                    [html.Tr([html.Th(col) for col in data.columns])] +
+                    [html.Tr([
+                        html.Td(data.iloc[i][col]) for col in data.columns
+                    ]) for i in range(len(data))]
+                    ),
+                ])
+    elif ((sheet_value == 'update') & (update_clicks>u_clicks)):
+        u_clicks = update_clicks
+        data = update_sheet(name,info)
+        return html.Div(data)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
